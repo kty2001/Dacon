@@ -1,0 +1,7 @@
+# Directory for gitignore
+
+SW_ty/test
+SW_ty/train
+SW_ty/unlabeled_data
+SW_ty/train_m*
+SW_ty/val_m*
