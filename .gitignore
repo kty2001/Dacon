@@ -1,5 +1,5 @@
 # Directory for gitignore
-.pth
+*.pth
 
 # ignore file in SW_ty
 SW_ty/data
