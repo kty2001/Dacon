@@ -4,3 +4,6 @@
 # ignore file in SW_ty
 SW_ty/data
 !SW_ty/data/.gitkeep
+
+SW_kso/data
+!SW_kso/data/.gitkeep

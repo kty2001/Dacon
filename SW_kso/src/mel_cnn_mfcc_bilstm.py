@@ -160,48 +160,86 @@ val_loader_mfcc = DataLoader(
 train_loader_mel = DataLoader(
     train_dataset_mel,
     batch_size=CONFIG.BATCH_SIZE,
-    shuffle=True
+    shuffle=True,
+    collate_fn=lambda batch: (
+        torch.tensor(batch).permute(0, 3, 1, 2)  # 데이터를 (batch_size, channels, height, width)로 reshape
+    )
 )
+
 
 val_loader_mel = DataLoader(
     val_dataset_mel,
     batch_size=CONFIG.BATCH_SIZE,
-    shuffle=False
+    shuffle=False,
+    collate_fn=lambda batch: (
+        torch.tensor(batch).permute(0, 3, 1, 2)
+       )   # 데이터를 (batch_size, 1, height, width)로 reshape
+    
 )
 
-class CNN(nn.Module):
-    def __init__(self, input_channels=128, num_classes= CONFIG.N_CLASSES):
-        super(CNN, self).__init__()
-        self.conv1 = nn.Conv2d(in_channels=input_channels, out_channels=16, kernel_size=3, stride=1, padding=1)
-        self.conv2 = nn.Conv2d(in_channels=16, out_channels=32, kernel_size=3, stride=1, padding=1)
-        self.conv3 = nn.Conv2d(in_channels=32, out_channels=64, kernel_size=3, stride=1, padding=1)
-        
-        # Adjust the size for fully connected layers based on the output of convolutional layers
-        self.fc_input_size = 64 * 16 * 16
-        
-        self.fc1 = nn.Linear(self.fc_input_size, 128)  # Adjusted to match the input size
-        self.fc2 = nn.Linear(128, num_classes)
-        self.relu = nn.ReLU()
-        self.maxpool = nn.MaxPool2d(kernel_size=2, stride=2)
-        
+# Define CNN model using VGG-19 architecture
+class VGG19(nn.Module):
+    def __init__(self, num_classes=CONFIG.N_CLASSES):
+        super(VGG19, self).__init__()
+        self.features = nn.Sequential(
+            nn.Conv2d(1, 64, kernel_size=3, padding=1),
+            nn.ReLU(inplace=True),
+            nn.Conv2d(64, 64, kernel_size=3, padding=1),
+            nn.ReLU(inplace=True),
+            nn.MaxPool2d(kernel_size=2, stride=2),
+            nn.Conv2d(64, 128, kernel_size=3, padding=1),
+            nn.ReLU(inplace=True),
+            nn.Conv2d(128, 128, kernel_size=3, padding=1),
+            nn.ReLU(inplace=True),
+            nn.MaxPool2d(kernel_size=2, stride=2),
+            nn.Conv2d(128, 256, kernel_size=3, padding=1),
+            nn.ReLU(inplace=True),
+            nn.Conv2d(256, 256, kernel_size=3, padding=1),
+            nn.ReLU(inplace=True),
+            nn.Conv2d(256, 256, kernel_size=3, padding=1),
+            nn.ReLU(inplace=True),
+            nn.Conv2d(256, 256, kernel_size=3, padding=1),
+            nn.ReLU(inplace=True),
+            nn.MaxPool2d(kernel_size=2, stride=2),
+            nn.Conv2d(256, 512, kernel_size=3, padding=1),
+            nn.ReLU(inplace=True),
+            nn.Conv2d(512, 512, kernel_size=3, padding=1),
+            nn.ReLU(inplace=True),
+            nn.Conv2d(512, 512, kernel_size=3, padding=1),
+            nn.ReLU(inplace=True),
+            nn.Conv2d(512, 512, kernel_size=3, padding=1),
+            nn.ReLU(inplace=True),
+            nn.MaxPool2d(kernel_size=2, stride=2),
+            nn.Conv2d(512, 512, kernel_size=3, padding=1),
+            nn.ReLU(inplace=True),
+            nn.Conv2d(512, 512, kernel_size=3, padding=1),
+            nn.ReLU(inplace=True),
+            nn.Conv2d(512, 512, kernel_size=3, padding=1),
+            nn.ReLU(inplace=True),
+            nn.Conv2d(512, 512, kernel_size=3, padding=1),
+            nn.ReLU(inplace=True),
+            nn.MaxPool2d(kernel_size=2, stride=2),
+        )
+        self.avgpool = nn.AdaptiveAvgPool2d((7, 7))
+        self.classifier = nn.Sequential(
+            nn.Linear(512 * 7 * 7, 4096),
+            nn.ReLU(True),
+            nn.Dropout(),
+            nn.Linear(4096, 4096),
+            nn.ReLU(True),
+            nn.Dropout(),
+            nn.Linear(4096, num_classes),
+        )
+
     def forward(self, x):
-        x = self.relu(self.conv1(x))
-        x = self.maxpool(x)
-        x = self.relu(self.conv2(x))
-        x = self.maxpool(x)
-        x = self.relu(self.conv3(x))
-        x = self.maxpool(x)
-        
-        # Flatten the tensor before passing to fully connected layers
-        x = x.view(x.size(0), -1)
-        
-        x = self.relu(self.fc1(x))
-        x = self.fc2(x)
-        x = torch.sigmoid(x)
+        x = self.features(x)
+        x = self.avgpool(x)
+        x = torch.flatten(x, 1)
+        x = self.classifier(x)
         return x
 
-# Mel spectrogram 데이터의 shape을 맞추기 위해 input_channels를 수정합니다.
-model_mel = CNN(input_channels=128)
+# Instantiate CNN model
+model_mel = VGG19()
 
 optimizer_mel = torch.optim.Adam(params=model_mel.parameters(), lr=CONFIG.LR)
 
@@ -299,7 +337,7 @@ def multiLabel_AUC(y_true, y_scores):
 
 
 # Training CNN model with Mel spectrograms
-model_mel = CNN()
+model_mel = VGG19()
 optimizer_mel = torch.optim.Adam(params=model_mel.parameters(), lr=CONFIG.LR)
 infer_model_mel = train(model_mel, optimizer_mel, train_loader_mel, val_loader_mel, device)
 
