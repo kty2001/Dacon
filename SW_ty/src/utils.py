@@ -7,6 +7,21 @@ import pandas as pd
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import roc_auc_score
 
+class Config:
+    SR = 32000
+    N_MFCC = 13
+    # Dataset
+    ROOT_FOLDER = './'
+    # Training
+    N_CLASSES = 2
+    BATCH_SIZE = 16
+    N_EPOCHS = 5
+    LR = 1e-4
+    # Others
+    SEED = 42
+
+CONFIG = Config()
+
 def seed_everything(seed):
     random.seed(seed)
     os.environ['PYTHONHASHSEED'] = str(seed)
