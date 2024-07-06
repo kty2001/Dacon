@@ -1,3 +1,5 @@
+import os
+import shutil
 from tqdm import tqdm
 import numpy as np
 import pandas as pd
@@ -6,6 +8,7 @@ import torch
 from torch import nn
 from torch.utils.data import DataLoader
 from torchvision import transforms
+# from torch.optim.lr_scheduler import CosineAnnealingLR, ReduceLROnPlateau
 
 from src.dataset import VoiceDataset
 from src.model import EfficientNetB7Classifier
@@ -14,6 +17,10 @@ from src.utils import seed_everything, split_data, multiLabel_AUC, CONFIG
 import warnings
 warnings.filterwarnings('ignore')
     
+
+if os.path.exists('data/argument'):
+    shutil.rmtree('data/argument')
+os.makedirs('data/argument')
 
 def train_one_epoch(train_loader, device, model, criterion, optimizer):    
     model.train()
@@ -29,7 +36,8 @@ def train_one_epoch(train_loader, device, model, criterion, optimizer):
         optimizer.zero_grad()
         loss.backward()
         optimizer.step()
-        
+        # scheduler.step()
+
         train_loss.append(loss.item())
 
     train_loss = np.mean(train_loss)
@@ -83,10 +91,12 @@ def train(device, mode):
     val_loader = DataLoader(val_dataset, batch_size=CONFIG.BATCH_SIZE, shuffle=False)
 
     model = EfficientNetB7Classifier(num_classes=CONFIG.N_CLASSES).to(device)
+    # model.load_state_dict(torch.load(f'weights/effi_5epoch_melspec_{mode}.pth')) # need for modifing
     criterion = nn.BCELoss()
-    optimizer = torch.optim.Adam(params = model.parameters(), lr = CONFIG.LR)  # AdamW, Lion-pytorch
-    # LR scheduler
-    
+    optimizer = torch.optim.AdamW(params = model.parameters(), lr = CONFIG.LR)  # AdamW, Lion-pytorch
+    # scheduler = ReduceLROnPlateau(optimizer, mode='min, patience=2) 
+    # scheduler = CosineAnnealingLR(optimizer, T_max=5)
+
     best_epoch = 0
     best_val_score = 0
     best_model = None
@@ -101,9 +111,9 @@ def train(device, mode):
             best_model = model
             best_epoch = epoch
 
-    torch.save(best_model.state_dict(), f'weights/effi_5epoch_melspec_{mode}.pth') # need for modify
+    torch.save(best_model.state_dict(), f'weights/effi_5epoch_argu_{mode}.pth') # need for modify
     print(f"The best model is {best_epoch} epoch model")
-    print(f'save the best model to effi_5epoch_melspec_{mode}.pth')
+    print(f'save the best model to effi_5epoch_argu_{mode}.pth')
 
     return best_model
 

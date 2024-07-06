@@ -35,7 +35,7 @@ def inference(device, mode):
     ])
 
     test_dataset = VoiceDataset(image_path='data/test_melspec', csv_path='data/test.csv', transform=transform, mode=mode) # need for modifing
-    test_loader = DataLoader( test_dataset, batch_size=CONFIG.BATCH_SIZE*16, shuffle=False)
+    test_loader = DataLoader(test_dataset, batch_size=CONFIG.BATCH_SIZE*16, shuffle=False)
 
 
     infer_model = EfficientNetB7Classifier(num_classes=CONFIG.N_CLASSES).to(device)
