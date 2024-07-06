@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 from tqdm import tqdm
 import numpy as np
 import pandas as pd
@@ -32,7 +31,7 @@ def inference(device, mode):
 
     transform = transforms.Compose([
         transforms.ToTensor(),
-        transforms.Resize((256, 256)),
+        transforms.Resize(CONFIG.IMAGE_SIZE),
     ])
 
     test_dataset = VoiceDataset(image_path='data/test_melspec', csv_path='data/test.csv', transform=transform, mode=mode) # need for modifing
@@ -44,41 +43,10 @@ def inference(device, mode):
 
     return model_inference(test_loader, infer_model, device)
 
-real_preds = inference(device='cuda', mode='real')
-fake_preds = inference(device='cuda', mode='fake')
+real_preds = np.array(inference(device='cuda', mode='real'))
+fake_preds = np.array(inference(device='cuda', mode='fake'))
 
 submit = pd.read_csv('submitfile/sample_submission.csv')
 submit.iloc[:, 1] = fake_preds[:, 1]
 submit.iloc[:, 2] = real_preds[:, 1]
 submit.to_csv('submitfile/effi_5epoch_melspec_sepa.csv', index=False) # need for modifing
-=======
-# test = pd.read_csv('./data/test.csv')
-# test_mfcc = get_mfcc_feature(test, False)
-# test_dataset = CustomDataset(test_mfcc, None)
-# test_loader = DataLoader(
-#     test_dataset,
-#     batch_size=CONFIG.BATCH_SIZE,
-#     shuffle=False
-# )
-
-# def inference(model, test_loader, device):
-#     model.to(device)
-#     model.eval()
-#     predictions = []
-#     with torch.no_grad():
-#         for features in tqdm(iter(test_loader)):
-#             features = features.float().to(device)
-            
-#             probs = model(features)
-
-#             probs  = probs.cpu().detach().numpy()
-#             predictions += probs.tolist()
-#     return predictions
-
-# preds = inference(infer_model, test_loader, device)
-
-# submit = pd.read_csv('./sample_submission.csv')
-# submit.iloc[:, 1:] = preds
-# submit.head()
-# submit.to_csv('./baseline_submit.csv', index=False)
->>>>>>> 758b03728eac1dbf63bc92196ac79fd5b906f7b3
