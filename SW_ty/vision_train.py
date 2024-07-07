@@ -11,7 +11,7 @@ from torchvision import transforms
 # from torch.optim.lr_scheduler import CosineAnnealingLR, ReduceLROnPlateau
 
 from src.dataset import VoiceDataset
-from src.model import EfficientNetB7Classifier
+from src.model import EfficientNetB7Classifier, ResNet50Classication
 from src.utils import seed_everything, split_data, multiLabel_AUC, CONFIG
 
 import warnings
@@ -91,6 +91,8 @@ def train(device, mode):
     val_loader = DataLoader(val_dataset, batch_size=CONFIG.BATCH_SIZE, shuffle=False)
 
     model = EfficientNetB7Classifier(num_classes=CONFIG.N_CLASSES).to(device)
+    # model.load_state_dict(torch.load(f'weights/effi_5epoch_melspec_{mode}.pth')) # need for modifing
+    # model = ResNet50Classication(num_classes=CONFIG.N_CLASSES).to(device)
     # model.load_state_dict(torch.load(f'weights/effi_5epoch_melspec_{mode}.pth')) # need for modifing
     criterion = nn.BCELoss()
     optimizer = torch.optim.AdamW(params = model.parameters(), lr = CONFIG.LR)  # AdamW, Lion-pytorch

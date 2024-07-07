@@ -28,7 +28,7 @@ class VoiceDataset(Dataset):
         image_data = self.csv_data.loc[index]
 
         if self.train == True:
-            argument = np.random.choice([0, 1], p=[0.75, 0.25])
+            argument = np.random.choice([0, 1], p=[0.5, 0.5])
 
             if argument == 0:
                 image = Image.open(os.path.join(self.image_path, f"{image_data['id']}.png")).convert('RGB')
