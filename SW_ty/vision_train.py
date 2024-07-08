@@ -1,5 +1,6 @@
 import os
 import shutil
+import pickle
 from tqdm import tqdm
 import numpy as np
 import pandas as pd
@@ -67,7 +68,6 @@ def valid_one_epoch(val_loader, device, model, criterion):
         all_labels = np.concatenate(all_labels, axis=0)
         all_probs = np.concatenate(all_probs, axis=0)
         
-        # Calculate AUC score
         auc_score = multiLabel_AUC(all_labels, all_probs)
     
     return val_loss, auc_score
@@ -78,6 +78,8 @@ def train(device, mode):
     train_csv_path = 'data/train_answer.csv'
     val_image_path = 'data/val_melspec'
     val_csv_path = 'data/val_answer.csv'
+    # with open('data/features/unlabeled_data_features.pkl', 'rb') as f:
+    #     argu_data = pickle.load(f)
 
     transform = transforms.Compose([
         transforms.ToTensor(),
@@ -86,11 +88,14 @@ def train(device, mode):
 
     train_dataset = VoiceDataset(image_path=train_image_path, csv_path=train_csv_path, transform=transform, mode=mode)
     val_dataset = VoiceDataset(image_path=val_image_path, csv_path=val_csv_path, transform=transform, mode=mode)
+    # train_dataset = VoiceDataset(image_path=train_image_path, csv_path=train_csv_path, argu_data=argu_data, transform=transform, mode=mode)
+    # val_dataset = VoiceDataset(image_path=val_image_path, csv_path=val_csv_path, argu_data=argu_data, transform=transform, mode=mode)
 
     train_loader = DataLoader(train_dataset, batch_size=CONFIG.BATCH_SIZE, shuffle=True)
     val_loader = DataLoader(val_dataset, batch_size=CONFIG.BATCH_SIZE, shuffle=False)
 
     model = EfficientNetB7Classifier(num_classes=CONFIG.N_CLASSES).to(device)
+    # model = nn.DataParallel(model)
     # model.load_state_dict(torch.load(f'weights/effi_5epoch_melspec_{mode}.pth')) # need for modifing
     # model = ResNet50Classication(num_classes=CONFIG.N_CLASSES).to(device)
     # model.load_state_dict(torch.load(f'weights/effi_5epoch_melspec_{mode}.pth')) # need for modifing
@@ -113,7 +118,7 @@ def train(device, mode):
             best_model = model
             best_epoch = epoch
 
-    torch.save(best_model.state_dict(), f'weights/effi_5epoch_argu_{mode}.pth') # need for modify
+    torch.save(best_model.state_dict(), f'weights/effi_5epoch_argu50_{mode}.pth') # need for modify
     print(f"The best model is {best_epoch} epoch model")
     print(f'save the best model to effi_5epoch_argu_{mode}.pth')
 

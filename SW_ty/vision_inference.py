@@ -36,7 +36,7 @@ def inference(device, mode):
     test_loader = DataLoader(test_dataset, batch_size=CONFIG.BATCH_SIZE*16, shuffle=False)
 
     infer_model = EfficientNetB7Classifier(num_classes=CONFIG.N_CLASSES).to(device)
-    infer_model.load_state_dict(torch.load(f'weights/effi_5epoch_argu_{mode}.pth')) # need for modifing
+    infer_model.load_state_dict(torch.load(f'weights/effi_5epoch_argu50_{mode}.pth')) # need for modifing
     # infer_model2 = ResNet50Classication(num_classes=CONFIG.N_CLASSES).to(device)
     # infer_model2.load_state_dict(torch.load(f'weights/resnet_5epoch_melspec_{mode}.pth')) # need for modifing
 

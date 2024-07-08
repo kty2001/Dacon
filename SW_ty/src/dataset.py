@@ -1,6 +1,7 @@
 import os
 import glob
 import shutil
+import pickle
 
 import librosa
 import pandas as pd
@@ -14,9 +15,10 @@ from src.utils import CONFIG
 
 
 class VoiceDataset(Dataset):
-    def __init__(self, image_path, csv_path, transform, mode):
+    def __init__(self, image_path, csv_path, transform, mode): # def __init__(slef, image_path, csv_path, argu_data, transform, mode):
         self.image_path = image_path
         self.csv_data = pd.read_csv(csv_path)
+        # self.argu_data = argu_data
         self.transform = transform
         self.mode = mode
         self.train = True if 'label' in self.csv_data.columns else False
@@ -34,7 +36,7 @@ class VoiceDataset(Dataset):
                 image = Image.open(os.path.join(self.image_path, f"{image_data['id']}.png")).convert('RGB')
             else:
                 save_fig = os.path.join(f'data/argument/argument_{image_data["id"]}.png')
-                argument_image(image_data, save_fig)
+                argument_image(image_data, save_fig) # argument_image(image_data, argu_data, save_fig)
                 image = Image.open(save_fig).convert('RGB')
 
             image = np.array(image, dtype=np.float32)
@@ -55,11 +57,14 @@ class VoiceDataset(Dataset):
             return image
 
 def argument_image(image_data, save_fig):
+# def argument_image(image_data, argu_data, save_fig):
+    # random_audio = argu_data[np.random.randint(0, 1264)]
     argu_data = glob.glob('data/unlabeled_data/*.ogg')
     random_audio = argu_data[np.random.randint(0, 1264)]
 
     y1, _ = librosa.load(os.path.join("data", image_data['path']), sr=CONFIG.SR)
     y2, _ = librosa.load(random_audio, sr=CONFIG.SR)
+    
     max_length = max(len(y1), len(y2))
     if np.random.choice([True, False]):
         y1 = np.pad(y1, (0, max_length - len(y1)), 'constant')
@@ -68,8 +73,10 @@ def argument_image(image_data, save_fig):
         y1 = np.pad(y1, (max_length - len(y1), 0), 'constant')
         y2 = np.pad(y2, (max_length - len(y2), 0), 'constant')
     y = y1 + y2
+
     S = librosa.feature.melspectrogram(y=y, sr=CONFIG.SR, n_mels=CONFIG.N_MELS, fmax=8192)
     S_dB = librosa.power_to_db(S, ref=np.max)
+
     plt.figure(figsize=(8, 4))
     librosa.display.specshow(S_dB, x_axis='time', y_axis='mel', sr=CONFIG.SR, fmax=8192)
     plt.tight_layout()
