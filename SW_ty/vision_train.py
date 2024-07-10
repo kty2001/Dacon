@@ -9,6 +9,7 @@ import torch
 from torch import nn
 from torch.utils.data import DataLoader
 from torchvision import transforms
+import pytorch_lightning as pl
 # from torch.optim.lr_scheduler import CosineAnnealingLR, ReduceLROnPlateau
 
 from src.dataset import VoiceDataset
@@ -17,16 +18,17 @@ from src.utils import seed_everything, split_data, multiLabel_AUC, CONFIG
 
 import warnings
 warnings.filterwarnings('ignore')
-    
 
-if os.path.exists('data/argument'):
-    shutil.rmtree('data/argument')
-os.makedirs('data/argument')
 
-def train_one_epoch(train_loader, device, model, criterion, optimizer):    
+
+def train_one_epoch(train_loader, device, model, criterion, optimizer):
+    if os.path.exists('data/argument'):
+        shutil.rmtree('data/argument')
+    os.makedirs('data/argument')
+
     model.train()
     train_loss = []
-
+    
     for images, labels in tqdm(iter(train_loader)):
         images = images.to(device)
         labels = labels.to(device)
@@ -78,24 +80,23 @@ def train(device, mode):
     train_csv_path = 'data/train_answer.csv'
     val_image_path = 'data/val_melspec'
     val_csv_path = 'data/val_answer.csv'
-    # with open('data/features/unlabeled_data_features.pkl', 'rb') as f:
-    #     argu_data = pickle.load(f)
+    with open('data/features/unlabeled_data_features.pkl', 'rb') as f:
+        argu_data = pickle.load(f)
 
     transform = transforms.Compose([
         transforms.ToTensor(),
         transforms.Resize(CONFIG.IMAGE_SIZE),
     ])
 
-    train_dataset = VoiceDataset(image_path=train_image_path, csv_path=train_csv_path, transform=transform, mode=mode)
-    val_dataset = VoiceDataset(image_path=val_image_path, csv_path=val_csv_path, transform=transform, mode=mode)
-    # train_dataset = VoiceDataset(image_path=train_image_path, csv_path=train_csv_path, argu_data=argu_data, transform=transform, mode=mode)
-    # val_dataset = VoiceDataset(image_path=val_image_path, csv_path=val_csv_path, argu_data=argu_data, transform=transform, mode=mode)
+    train_dataset = VoiceDataset(image_path=train_image_path, csv_path=train_csv_path, argu_data=argu_data, transform=transform, mode=mode)
+    val_dataset = VoiceDataset(image_path=val_image_path, csv_path=val_csv_path, argu_data=argu_data, transform=transform, mode=mode)
 
     train_loader = DataLoader(train_dataset, batch_size=CONFIG.BATCH_SIZE, shuffle=True)
     val_loader = DataLoader(val_dataset, batch_size=CONFIG.BATCH_SIZE, shuffle=False)
 
     model = EfficientNetB7Classifier(num_classes=CONFIG.N_CLASSES).to(device)
-    # model = nn.DataParallel(model)
+    # device_ids = [0, 1, 2, 3, 4, 5, 6, 7]
+    # model = nn.DataParallel(model, device_ids=device_ids, output_device=0)
     # model.load_state_dict(torch.load(f'weights/effi_5epoch_melspec_{mode}.pth')) # need for modifing
     # model = ResNet50Classication(num_classes=CONFIG.N_CLASSES).to(device)
     # model.load_state_dict(torch.load(f'weights/effi_5epoch_melspec_{mode}.pth')) # need for modifing
@@ -118,14 +119,15 @@ def train(device, mode):
             best_model = model
             best_epoch = epoch
 
-    torch.save(best_model.state_dict(), f'weights/effi_5epoch_argu50_{mode}.pth') # need for modify
-    print(f"The best model is {best_epoch} epoch model")
-    print(f'save the best model to effi_5epoch_argu_{mode}.pth')
+        torch.save(best_model.state_dict(), f'weights/effi_{epoch}epoch_argu50_{mode}.pth') # need for modify
+        print(f"The best model is {best_epoch} epoch model")
+        print(f'save the best model to effi_5epoch_argu50_{mode}.pth')
+        break
 
     return best_model
 
 seed_everything(CONFIG.SEED) # Seed 고정
 split_data("data/train.csv", CONFIG.SEED)
 
-real_model = train(device='cuda', mode='real')
+# real_model = train(device='cuda', mode='real')
 fake_model = train(device='cuda', mode='fake')
