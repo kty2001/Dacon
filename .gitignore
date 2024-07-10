@@ -1,5 +1,6 @@
 # Directory for gitignore
 *.pth
+*.ckpt
 
 # ignore file in SW_ty
 SW_ty/data
