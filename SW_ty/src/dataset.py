@@ -1,8 +1,4 @@
 import os
-import glob
-import shutil
-import pickle
-
 import librosa
 import pandas as pd
 import numpy as np
@@ -73,7 +69,6 @@ def argument_image(image_data, argu_data, save_fig):
     S = librosa.feature.melspectrogram(y=y, sr=CONFIG.SR, n_mels=CONFIG.N_MELS, fmax=8192)
     S_dB = librosa.power_to_db(S, ref=np.max)
 
-    # plt.figure(figsize=(8, 4))
     plt.figure(figsize=(4, 2))
     librosa.display.specshow(S_dB, x_axis='time', y_axis='mel', sr=CONFIG.SR, fmax=8192)
     plt.tight_layout()

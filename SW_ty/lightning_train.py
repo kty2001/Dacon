@@ -10,20 +10,16 @@ from torch import nn
 from torch.utils.data import DataLoader
 from torchvision import transforms
 import lightning as L
-# from torch.optim.lr_scheduler import CosineAnnealingLR, ReduceLROnPlateau
 
 from src.dataset import VoiceDataset
-from src.model import EfficientNetB7Classifier, ResNet50Classication, EfficientNetModel, DeldirCallback
-from src.utils import seed_everything, split_data, multiLabel_AUC, CONFIG
+from src.model import EfficientNet_b7Model, ResNet50Model
+from src.utils import seed_everything, split_data, CONFIG
 
 import warnings
 warnings.filterwarnings('ignore')
 
 
 def train(mode):
-    if os.path.exists('data/argument'):
-        shutil.rmtree('data/argument')
-    os.makedirs('data/argument')
     train_image_path = 'data/train_mel'
     train_csv_path = 'data/train_answer.csv'
     val_image_path = 'data/val_mel'
@@ -42,16 +38,19 @@ def train(mode):
     train_loader = DataLoader(train_dataset, batch_size=CONFIG.BATCH_SIZE, shuffle=True)
     val_loader = DataLoader(val_dataset, batch_size=CONFIG.BATCH_SIZE, shuffle=False)
 
-    model = EfficientNetModel(num_classes=CONFIG.N_CLASSES)
-    trainer = L.Trainer(max_epochs=5, accelerator='gpu', callbacks=[DeldirCallback('./data/argument')])
-    trainer.fit(model, train_loader, val_loader)
+    # model1 = EfficientNet_b7Model(num_classes=CONFIG.N_CLASSES)
+    model2 = ResNet50Model(num_classes=CONFIG.N_CLASSES)
+    
+    trainer = L.Trainer(max_epochs=5, accelerator='gpu', limit_train_batches=32)
 
-seed_everything(CONFIG.SEED) # Seed 고정
+    # trainer.fit(model1, train_loader, val_loader)
+    trainer.fit(model2, train_loader, val_loader)
+
+print("seed initialize to", CONFIG.SEED)
+seed_everything(CONFIG.SEED)
+print("data split")
 split_data("data/train.csv", CONFIG.SEED)
 
-# if os.path.exists('data/argument'):
-#     shutil.rmtree('data/argument')
-# os.makedirs('data/argument')
-
+print("start train")
 train(mode='real')
-# train(mode='fake')
+train(mode='fake')
