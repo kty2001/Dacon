@@ -47,14 +47,9 @@ def inference(device, mode):
     checkpoint2 = f"./lightning_logs/res-argu50-bat32-{mode}/checkpoints/epoch=4-step=160.ckpt"
     infer_model2 = ResNet50Model.load_from_checkpoint(checkpoint2, num_classes=CONFIG.N_CLASSES)
 
-    # return np.array(model_inference(test_loader, infer_model1, device))
     return np.array(model_inference(test_loader, infer_model1, device)), np.array(model_inference(test_loader, infer_model2, device))
 
 seed_everything(CONFIG.SEED) # Seed 고정
-
-
-# real_preds = inference(device='cuda', mode='real')
-# fake_preds = inference(device='cuda', mode='fake')
 
 real_preds1, real_preds2 = inference(device='cuda', mode='real')
 fake_preds1, fake_preds2 = inference(device='cuda', mode='fake')
