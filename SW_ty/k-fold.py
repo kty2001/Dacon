@@ -48,11 +48,11 @@ def train(mode, kfold_num):
     time.sleep(1)
     trainer1.fit(model1, train_loader, val_loader)
     time.sleep(1)
-    trainer1.save_checkpoint(filepath=f'lightning_logs/effi-K{kfold_num}-argu50-bat32-{mode}.ckpt')
+    trainer1.save_checkpoint(filepath=f'lightning_logs/kfold/effi-K{kfold_num}-argu50-bat32-{mode}.ckpt')
     time.sleep(1)
     trainer2.fit(model2, train_loader, val_loader)
     time.sleep(1)
-    trainer2.save_checkpoint(filepath=f'lightning_logs/res-K{kfold_num}-argu50-bat32-{mode}.ckpt')
+    trainer2.save_checkpoint(filepath=f'lightning_logs/kfold/res-K{kfold_num}-argu50-bat32-{mode}.ckpt')
     time.sleep(1)
 
 def model_inference(test_loader, model, device):
@@ -69,7 +69,6 @@ def model_inference(test_loader, model, device):
     return predictions
 
 def inference(device, mode, kfold_num):
-    print("inference in")
     transform = transforms.Compose([
         transforms.ToTensor(),
         transforms.Resize(CONFIG.IMAGE_SIZE),
@@ -97,6 +96,8 @@ fake_preds_list = []
 
 def kfold(kfold_num):
     for i in range(kfold_num):
+        print("current fold:", i)
+
         train(mode='real', kfold_num=i)
         time.sleep(1)
         train(mode='fake', kfold_num=i)
@@ -113,8 +114,9 @@ def kfold(kfold_num):
 
 real_preds, fake_preds = kfold(kfold_num=5)
 
-csv_name = 'submitfile/K5_ese_bat32_argu50.csv'  # need for modifing
+csv_name = 'submitfile/ese_K5_bat32_argu50.csv'  # need for modifing
 submit = pd.read_csv('submitfile/sample_submission.csv')
 submit.iloc[:, 1] = fake_preds[:, 1]
 submit.iloc[:, 2] = real_preds[:, 1]
 submit.to_csv(csv_name, index=False)
+print("make csv in", csv_name)
