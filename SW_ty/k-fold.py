@@ -1,5 +1,6 @@
 import os
 import shutil
+import time
 import pickle
 from tqdm import tqdm
 import numpy as np
@@ -19,7 +20,7 @@ import warnings
 warnings.filterwarnings('ignore')
 
 
-def train(mode):
+def train(mode, kfold_num):
     train_image_path = 'data/train_mel'
     train_csv_path = 'data/train_answer.csv'
     val_image_path = 'data/val_mel'
@@ -37,14 +38,22 @@ def train(mode):
 
     train_loader = DataLoader(train_dataset, batch_size=CONFIG.BATCH_SIZE, shuffle=True)
     val_loader = DataLoader(val_dataset, batch_size=CONFIG.BATCH_SIZE, shuffle=False)
-
+    
     model1 = EfficientNet_b7Model(num_classes=CONFIG.N_CLASSES)
     model2 = ResNet50Model(num_classes=CONFIG.N_CLASSES)
     
-    trainer = L.Trainer(max_epochs=5, accelerator='gpu', limit_train_batches=32)
-
-    trainer.fit(model1, train_loader, val_loader)
-    trainer.fit(model2, train_loader, val_loader)
+    trainer1 = L.Trainer(max_epochs=5, accelerator='gpu', limit_train_batches=32)
+    trainer2 = L.Trainer(max_epochs=5, accelerator='gpu', limit_train_batches=32)
+    
+    time.sleep(1)
+    trainer1.fit(model1, train_loader, val_loader)
+    time.sleep(1)
+    trainer1.save_checkpoint(filepath=f'lightning_logs/effi-K{kfold_num}-argu50-bat32-{mode}.ckpt')
+    time.sleep(1)
+    trainer2.fit(model2, train_loader, val_loader)
+    time.sleep(1)
+    trainer2.save_checkpoint(filepath=f'lightning_logs/res-K{kfold_num}-argu50-bat32-{mode}.ckpt')
+    time.sleep(1)
 
 def model_inference(test_loader, model, device):
     model.eval()
@@ -59,7 +68,8 @@ def model_inference(test_loader, model, device):
             predictions += probs.tolist()
     return predictions
 
-def inference(device, mode):
+def inference(device, mode, kfold_num):
+    print("inference in")
     transform = transforms.Compose([
         transforms.ToTensor(),
         transforms.Resize(CONFIG.IMAGE_SIZE),
@@ -69,12 +79,11 @@ def inference(device, mode):
     test_loader = DataLoader(test_dataset, batch_size=CONFIG.BATCH_SIZE*16, shuffle=False)
 
     # load checkpoint
-    checkpoint1 = f"./lightning_logs/effi-argu50-bat32-{mode}/checkpoints/epoch=4-step=160.ckpt"
-    infer_model1 = EfficientNet_b7Model.load_from_checkpoint(checkpoint1, num_classes=CONFIG.N_CLASSES)
-    checkpoint2 = f"./lightning_logs/res-argu50-bat32-{mode}/checkpoints/epoch=4-step=160.ckpt"
-    infer_model2 = ResNet50Model.load_from_checkpoint(checkpoint2, num_classes=CONFIG.N_CLASSES)
+    checkpoint1 = f'lightning_logs/kfold/effi-K{kfold_num}-argu50-bat32-{mode}.ckpt'
+    infer_model1 = EfficientNet_b7Model.load_from_checkpoint(checkpoint1, num_classes=CONFIG.N_CLASSES).to(device)
+    checkpoint2 = f'lightning_logs/kfold/res-K{kfold_num}-argu50-bat32-{mode}.ckpt'
+    infer_model2 = ResNet50Model.load_from_checkpoint(checkpoint2, num_classes=CONFIG.N_CLASSES).to(device)
 
-    # return np.array(model_inference(test_loader, infer_model1, device))
     return np.array(model_inference(test_loader, infer_model1, device)), np.array(model_inference(test_loader, infer_model2, device))
 
 
@@ -88,17 +97,21 @@ fake_preds_list = []
 
 def kfold(kfold_num):
     for i in range(kfold_num):
-        train(mode='real')
-        train(mode='fake')
+        train(mode='real', kfold_num=i)
+        time.sleep(1)
+        train(mode='fake', kfold_num=i)
+        time.sleep(1)
 
-        real_preds1, real_preds2 = inference(device='cuda', mode='real')
-        fake_preds1, fake_preds2 = inference(device='cuda', mode='fake')
+        real_preds1, real_preds2 = inference(device='cuda', mode='real', kfold_num=i)
+        time.sleep(1)
+        fake_preds1, fake_preds2 = inference(device='cuda', mode='fake', kfold_num=i)
+        time.sleep(1)
         real_preds_list.append((real_preds1 + real_preds2) / 2)
         fake_preds_list.append((fake_preds1 + fake_preds2) / 2)
 
     return np.mean(real_preds_list, axis=0), np.mean(fake_preds_list, axis=0)
 
-real_preds, fake_preds = kfold(5)
+real_preds, fake_preds = kfold(kfold_num=5)
 
 csv_name = 'submitfile/K5_ese_bat32_argu50.csv'  # need for modifing
 submit = pd.read_csv('submitfile/sample_submission.csv')

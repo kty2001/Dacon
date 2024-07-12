@@ -5,7 +5,6 @@ from torch import nn
 import torchvision.models as models
 import lightning as L
 
-
 class EfficientNet_b7Model(L.LightningModule):
     def __init__(self, num_classes=2):
         super().__init__()
