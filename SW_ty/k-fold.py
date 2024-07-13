@@ -13,7 +13,7 @@ from torchvision import transforms
 import lightning as L
 
 from src.dataset import VoiceDataset
-from src.model import EfficientNet_b7Model, ResNet50Model
+from src.model import EfficientNet_b7Model, ResNet50Model, ResNet152Model
 from src.utils import seed_everything, split_data, CONFIG
 
 import warnings
@@ -40,7 +40,8 @@ def train(mode, kfold_num):
     val_loader = DataLoader(val_dataset, batch_size=CONFIG.BATCH_SIZE, shuffle=False)
     
     model1 = EfficientNet_b7Model(num_classes=CONFIG.N_CLASSES)
-    model2 = ResNet50Model(num_classes=CONFIG.N_CLASSES)
+    # model2 = ResNet50Model(num_classes=CONFIG.N_CLASSES)
+    model2 = ResNet152Model(num_classes=CONFIG.N_CLASSES)
     
     trainer1 = L.Trainer(max_epochs=5, accelerator='gpu', limit_train_batches=32)
     trainer2 = L.Trainer(max_epochs=5, accelerator='gpu', limit_train_batches=32)
@@ -52,7 +53,8 @@ def train(mode, kfold_num):
     time.sleep(1)
     trainer2.fit(model2, train_loader, val_loader)
     time.sleep(1)
-    trainer2.save_checkpoint(filepath=f'lightning_logs/kfold/res-K{kfold_num}-argu50-bat32-{mode}.ckpt')
+    # trainer2.save_checkpoint(filepath=f'lightning_logs/kfold/res-K{kfold_num}-argu50-bat32-{mode}.ckpt')
+    trainer2.save_checkpoint(filepath=f'lightning_logs/kfold/res152-K{kfold_num}-argu50-bat32-{mode}.ckpt')
     time.sleep(1)
 
 def model_inference(test_loader, model, device):
@@ -80,8 +82,10 @@ def inference(device, mode, kfold_num):
     # load checkpoint
     checkpoint1 = f'lightning_logs/kfold/effi-K{kfold_num}-argu50-bat32-{mode}.ckpt'
     infer_model1 = EfficientNet_b7Model.load_from_checkpoint(checkpoint1, num_classes=CONFIG.N_CLASSES).to(device)
-    checkpoint2 = f'lightning_logs/kfold/res-K{kfold_num}-argu50-bat32-{mode}.ckpt'
-    infer_model2 = ResNet50Model.load_from_checkpoint(checkpoint2, num_classes=CONFIG.N_CLASSES).to(device)
+    # checkpoint2 = f'lightning_logs/kfold/res50-K{kfold_num}-argu50-bat32-{mode}.ckpt'
+    checkpoint2 = f'lightning_logs/kfold/res152-K{kfold_num}-argu50-bat32-{mode}.ckpt'
+    # infer_model2 = ResNet50Model.load_from_checkpoint(checkpoint2, num_classes=CONFIG.N_CLASSES).to(device)
+    infer_model2 = ResNet152Model.load_from_checkpoint(checkpoint2, num_classes=CONFIG.N_CLASSES).to(device)
 
     return np.array(model_inference(test_loader, infer_model1, device)), np.array(model_inference(test_loader, infer_model2, device))
 

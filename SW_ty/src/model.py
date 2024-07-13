@@ -77,3 +77,39 @@ class ResNet50Model(L.LightningModule):
 
     def configure_optimizers(self):
         return torch.optim.AdamW(self.parameters(), lr=1e-3)
+
+class ResNet152Model(L.LightningModule):
+    def __init__(self, num_classes=2):
+        super().__init__()
+        self.resnet152 = models.resnet152(pretrained=True)
+        num_ftrs = self.resnet152.fc.in_features
+        self.resnet152.fc = nn.Sequential(
+            nn.Dropout(p=0.5, inplace=True),
+            nn.Linear(num_ftrs, num_classes))
+        self.softmax = nn.Softmax()
+        self.loss_fn = nn.BCELoss()
+
+    def forward(self, x):
+        x = self.resnet152(x)
+        x = self.softmax(x)
+        return x
+
+    def training_step(self, batch, batch_idx):
+        x, y = batch
+        y_hat = self(x)
+        loss = self.loss_fn(y_hat, y)
+        self.log('train_loss', loss)
+        return loss
+
+    def validation_step(self, batch, batch_idx):
+        x, y = batch
+        y_hat = self(x)
+        loss = self.loss_fn(y_hat, y)
+        self.log('val_loss', loss)
+        self.val_loss = loss
+
+    def on_validation_epoch_end(self):
+        print(self.val_loss)
+
+    def configure_optimizers(self):
+        return torch.optim.AdamW(self.parameters(), lr=1e-3)
