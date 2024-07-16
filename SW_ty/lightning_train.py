@@ -1,5 +1,6 @@
 import os
 import shutil
+import time
 import pickle
 from tqdm import tqdm
 import numpy as np
@@ -12,14 +13,14 @@ from torchvision import transforms
 import lightning as L
 
 from src.dataset import VoiceDataset
-from src.model import EfficientNet_b7Model, ResNet50Model
+from src.model import EfficientNet_b7Model, ResNet50Model, EfficientNet_b6Model
 from src.utils import seed_everything, split_data, CONFIG
 
 import warnings
 warnings.filterwarnings('ignore')
 
 
-def train(mode):
+def train(mode, kfold_num):
     train_image_path = 'data/train_mel'
     train_csv_path = 'data/train_answer.csv'
     val_image_path = 'data/val_mel'
@@ -37,20 +38,33 @@ def train(mode):
 
     train_loader = DataLoader(train_dataset, batch_size=CONFIG.BATCH_SIZE, shuffle=True)
     val_loader = DataLoader(val_dataset, batch_size=CONFIG.BATCH_SIZE, shuffle=False)
-
-    # model1 = EfficientNet_b7Model(num_classes=CONFIG.N_CLASSES)
-    model2 = ResNet50Model(num_classes=CONFIG.N_CLASSES)
     
-    trainer = L.Trainer(max_epochs=5, accelerator='gpu', limit_train_batches=32)
+    model1 = EfficientNet_b7Model(num_classes=CONFIG.N_CLASSES, mode=mode)
+    model2 = EfficientNet_b6Model(num_classes=CONFIG.N_CLASSES, mode=mode)
+    # model2 = ResNet50Model(num_classes=CONFIG.N_CLASSES)
+    
+    trainer1 = L.Trainer(max_epochs=5, accelerator='gpu', limit_train_batches=32)
+    trainer2 = L.Trainer(max_epochs=5, accelerator='gpu', limit_train_batches=32)
+    
+    trainer1.fit(model1, train_loader, val_loader)
+    trainer1.save_checkpoint(filepath=f'lightning_logs/kfold/effi7-K{kfold_num}-argu50-bat32-{mode}.ckpt')
+    time.sleep(1)
 
-    # trainer.fit(model1, train_loader, val_loader)
-    trainer.fit(model2, train_loader, val_loader)
+    trainer2.fit(model2, train_loader, val_loader)
+    trainer2.save_checkpoint(filepath=f'lightning_logs/kfold/effi6-K{kfold_num}-argu50-bat32-{mode}.ckpt')
+    time.sleep(1)
 
 print("seed initialize to", CONFIG.SEED)
 seed_everything(CONFIG.SEED)
 print("data split")
 split_data("data/train.csv", CONFIG.SEED)
 
-print("start train")
-train(mode='real')
-train(mode='fake')
+def kfold_train(kfold_num):
+    for i in range(kfold_num):
+        print("current fold:", i)
+
+        train(mode='real', kfold_num=i)
+        train(mode='fake', kfold_num=i)
+        time.sleep(1)
+
+kfold_train(kfold_num=5)

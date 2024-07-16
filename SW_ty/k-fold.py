@@ -95,10 +95,10 @@ seed_everything(CONFIG.SEED)
 print("data split")
 split_data("data/train.csv", CONFIG.SEED)
 
-real_preds_list = []
-fake_preds_list = []
-
 def kfold(kfold_num):
+    real_preds_list = []
+    fake_preds_list = []
+
     for i in range(kfold_num):
         print("current fold:", i)
 

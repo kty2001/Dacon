@@ -1,5 +1,6 @@
 import os
 import shutil
+import time
 import pickle
 from tqdm import tqdm
 import numpy as np
@@ -12,7 +13,7 @@ from torchvision import transforms
 import lightning as L
 
 from src.dataset import VoiceDataset
-from src.model import EfficientNet_b7Model, ResNet50Model
+from src.model import EfficientNet_b7Model, ResNet50Model, EfficientNet_b6Model
 from src.utils import seed_everything, CONFIG
 
 import warnings
@@ -32,7 +33,7 @@ def model_inference(test_loader, model, device):
             predictions += probs.tolist()
     return predictions
 
-def inference(device, mode):
+def inference(device, mode, kfold_num):
     transform = transforms.Compose([
         transforms.ToTensor(),
         transforms.Resize(CONFIG.IMAGE_SIZE),
@@ -42,22 +43,38 @@ def inference(device, mode):
     test_loader = DataLoader(test_dataset, batch_size=CONFIG.BATCH_SIZE*16, shuffle=False)
 
     # load checkpoint
-    checkpoint1 = f"./lightning_logs/effi-argu50-bat32-{mode}/checkpoints/epoch=4-step=160.ckpt"
-    infer_model1 = EfficientNet_b7Model.load_from_checkpoint(checkpoint1, num_classes=CONFIG.N_CLASSES)
-    checkpoint2 = f"./lightning_logs/res-argu50-bat32-{mode}/checkpoints/epoch=4-step=160.ckpt"
-    infer_model2 = ResNet50Model.load_from_checkpoint(checkpoint2, num_classes=CONFIG.N_CLASSES)
+    checkpoint1 = f'lightning_logs/5kfold/effi7-K{kfold_num}-argu50-bat32-{mode}.ckpt'
+    infer_model1 = EfficientNet_b7Model.load_from_checkpoint(checkpoint1, num_classes=CONFIG.N_CLASSES, mode=mode).to(device)
+    checkpoint2 = f'lightning_logs/5kfold/effi6-K{kfold_num}-argu50-bat32-{mode}.ckpt'
+    infer_model2 = EfficientNet_b6Model.load_from_checkpoint(checkpoint2, num_classes=CONFIG.N_CLASSES, mode=mode).to(device)
+    # infer_model2 = ResNet50Model.load_from_checkpoint(checkpoint2, num_classes=CONFIG.N_CLASSES).to(device)
 
     return np.array(model_inference(test_loader, infer_model1, device)), np.array(model_inference(test_loader, infer_model2, device))
 
-seed_everything(CONFIG.SEED) # Seed 고정
+def kfold_infer(kfold_num):
+    real_preds_list = []
+    fake_preds_list = []
 
-real_preds1, real_preds2 = inference(device='cuda', mode='real')
-fake_preds1, fake_preds2 = inference(device='cuda', mode='fake')
-real_preds = (real_preds1 + real_preds2) / 2
-fake_preds = (fake_preds1 + fake_preds2) / 2
+    for i in range(kfold_num):
+        print("current fold:", i)
 
-csv_name = 'submitfile/L_ese_bat32_argu50.csv'  # need for modifing
+        real_preds1, real_preds2 = inference(device='cuda', mode='real', kfold_num=i)
+        time.sleep(1)
+        fake_preds1, fake_preds2 = inference(device='cuda', mode='fake', kfold_num=i)
+        time.sleep(1)
+        real_preds_list.append((real_preds1 + real_preds2) / 2)
+        fake_preds_list.append((fake_preds1 + fake_preds2) / 2)
+
+    return np.mean(real_preds_list, axis=0), np.mean(fake_preds_list, axis=0)
+
+print("seed initialize to", CONFIG.SEED)
+seed_everything(CONFIG.SEED)
+
+real_preds, fake_preds = kfold_infer(kfold_num=5)
+
+csv_name = 'submitfile/effi7+effi6_K5_bat32_argu50.csv'  # need for modifing
 submit = pd.read_csv('submitfile/sample_submission.csv')
 submit.iloc[:, 1] = fake_preds[:, 1]
 submit.iloc[:, 2] = real_preds[:, 1]
 submit.to_csv(csv_name, index=False)
+print("make csv in", csv_name)

@@ -5,6 +5,8 @@ import torch
 import numpy as np
 import pandas as pd
 from sklearn.model_selection import train_test_split
+from sklearn.calibration import calibration_curve
+from sklearn.metrics import mean_squared_error
 from sklearn.metrics import roc_auc_score
 
 class Config:
@@ -49,3 +51,32 @@ def multiLabel_AUC(y_true, y_scores):
     mean_auc_score = np.mean(auc_scores)
 
     return mean_auc_score
+
+def expected_calibration_error(y_true, y_prob, n_bins=10):
+    prob_true, prob_pred = calibration_curve(y_true, y_prob, n_bins=n_bins, strategy='uniform')
+    bin_totals = np.histogram(y_prob, bins=np.linspace(0, 1, n_bins + 1), density=False)[0]
+    non_empty_bins = bin_totals > 0
+    bin_weights = bin_totals / len(y_prob)
+    bin_weights = bin_weights[non_empty_bins]
+    prob_true = prob_true[:len(bin_weights)]
+    prob_pred = prob_pred[:len(bin_weights)]
+    ece = np.sum(bin_weights * np.abs(prob_true - prob_pred))
+    return ece
+
+def auc_brier_ece(y_true, y_prob):    
+    # Calculate AUC for each class
+    auc_scores = []
+    auc = roc_auc_score(y_true, y_prob)
+    auc_scores.append(auc)
+
+    # Brier Score
+    brier_scores = []
+    brier = mean_squared_error(y_true, y_prob)
+    brier_scores.append(brier)
+    
+    # ECE
+    ece_scores = []
+    ece = expected_calibration_error(y_true, y_prob)
+    ece_scores.append(ece)
+    
+    return auc_scores, brier_scores, ece_scores
