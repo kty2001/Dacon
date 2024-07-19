@@ -29,20 +29,28 @@ class VoiceDataset(Dataset):
             argument = np.random.choice([0, 1], p=[0.5, 0.5])
 
             if argument == 0:
-                image = Image.open(os.path.join(self.image_path, f"{image_data['id']}.png")).convert('RGB')
+                try:
+                    image = Image.open(os.path.join(self.image_path, f"{image_data['id']}.png")).convert('RGB')
+                except:
+                    image = Image.open(os.path.join('data/unlabeled_mel', f"{image_data['id']}.png")).convert('RGB')
             else:
                 save_fig = os.path.join(f'data/argument/argument_{image_data["id"]}.png')
                 argument_image(image_data, self.argu_data, save_fig)
                 image = Image.open(save_fig).convert('RGB')
-                # shutil.rmtree(save_fig)
 
             image = np.array(image, dtype=np.float32)
             image = self.transform(image)
 
             if self.mode == 'real':
-                label = np.array([0, 1] if image_data['label'] == 'real' else [1, 0], dtype=np.float32)
+                if image_data['label']:
+                    label = np.array([0, 1] if image_data['label'] == 'real' else [1, 0], dtype=np.float32)
+                else:
+                    label = np.array([0, 1] if image_data['real'] > 0.5 else [1, 0], dtype=np.float32)
             elif self.mode == 'fake':
-                label = np.array([0, 1] if image_data['label'] == 'fake' else [1, 0], dtype=np.float32)
+                if image_data['label']:
+                    label = np.array([0, 1] if image_data['label'] == 'fake' else [1, 0], dtype=np.float32)
+                else:
+                    label = np.array([0, 1] if image_data['fake'] > 0.5 else [1, 0], dtype=np.float32)
 
             return image, label
 
@@ -54,7 +62,7 @@ class VoiceDataset(Dataset):
             return image
 
 def argument_image(image_data, argu_data, save_fig):
-    y1, _ = librosa.load(os.path.join("data", image_data['path']), sr=CONFIG.SR)
+    y1, _ = librosa.load(os.path.join("data", image_data['path'].replace("\\", "/")), sr=CONFIG.SR)
     y2 = argu_data[np.random.randint(0, 1264)]
     
     max_length = max(len(y1), len(y2))

@@ -17,7 +17,6 @@ class EfficientNet_b7Model(L.LightningModule):
             nn.Linear(2560, num_classes))
         self.sigmoid = nn.Sigmoid()
         self.loss_fn = nn.BCELoss()
-        self.val_loss = 1
         self.auc, self.brier, self.ece = [], [], []
         self.mode = mode
 
@@ -38,7 +37,6 @@ class EfficientNet_b7Model(L.LightningModule):
         y_hat = self(x)
         loss = self.loss_fn(y_hat, y)
         self.log('val_loss', loss)
-        self.val_loss = loss
         if self.mode == 'real':
             y_true = y.cpu().detach().numpy()[:, 1]
             y_prob = torch.sigmoid(y_hat).cpu().detach().numpy()[:, 1]
@@ -51,13 +49,16 @@ class EfficientNet_b7Model(L.LightningModule):
         self.ece.extend(ece_scores)
 
     def on_validation_epoch_end(self):
-        print(self.val_loss)
         mean_auc, mean_brier, mean_ece = np.mean(self.auc), np.mean(self.brier), np.mean(self.ece)
+        current_lr = self.trainer.optimizers[0].param_groups[0]['lr']
+        print(f"Epoch {self.current_epoch + 1} Learning rate: {current_lr:.6f}")
         print(f"auc: {mean_auc:.5f} / brier: {mean_brier:.5f} / ece: {mean_ece:.5f}\nCombi_Score: {0.5 * (1 - mean_auc) + 0.25 * mean_brier + 0.25 * mean_ece:.5f}")
         self.auc, self.brier, self.ece = [], [], []
 
     def configure_optimizers(self):
-        return torch.optim.AdamW(self.parameters(), lr=1e-3)
+        optimizer = torch.optim.AdamW(self.parameters(), lr=1e-3)
+        scheduler = torch.optim.lr_scheduler.CosineAnnealingWarmRestarts(optimizer, T_0=5, T_mult=1)
+        return [optimizer], [scheduler]
 
 class EfficientNet_b6Model(L.LightningModule):
     def __init__(self, num_classes=2, mode='real'):
@@ -68,7 +69,6 @@ class EfficientNet_b6Model(L.LightningModule):
             nn.Linear(2304, num_classes))
         self.sigmoid = nn.Sigmoid()
         self.loss_fn = nn.BCELoss()
-        self.val_loss = 1
         self.auc, self.brier, self.ece = [], [], []
         self.mode = mode
 
@@ -89,7 +89,6 @@ class EfficientNet_b6Model(L.LightningModule):
         y_hat = self(x)
         loss = self.loss_fn(y_hat, y)
         self.log('val_loss', loss)
-        self.val_loss = loss
         if self.mode == 'real':
             y_true = y.cpu().detach().numpy()[:, 1]
             y_prob = torch.sigmoid(y_hat).cpu().detach().numpy()[:, 1]
@@ -102,16 +101,15 @@ class EfficientNet_b6Model(L.LightningModule):
         self.ece.extend(ece_scores)
 
     def on_validation_epoch_end(self):
-        print(self.val_loss)
         mean_auc, mean_brier, mean_ece = np.mean(self.auc), np.mean(self.brier), np.mean(self.ece)
         print(f"auc: {mean_auc:.5f} / brier: {mean_brier:.5f} / ece: {mean_ece:.5f}\nCombi_Score: {0.5 * (1 - mean_auc) + 0.25 * mean_brier + 0.25 * mean_ece:.5f}")
         self.auc, self.brier, self.ece = [], [], []
 
     def configure_optimizers(self):
-        return torch.optim.AdamW(self.parameters(), lr=1e-3)
+        return torch.optim.AdamW(self.parameters(), lr=3e-4)
 
 class ResNet50Model(L.LightningModule):
-    def __init__(self, num_classes=2):
+    def __init__(self, num_classes=2, mode='real'):
         super().__init__()
         self.resnet50 = models.resnet50(pretrained=True)
         num_ftrs = self.resnet50.fc.in_features
@@ -121,6 +119,7 @@ class ResNet50Model(L.LightningModule):
         self.softmax = nn.Softmax()
         self.loss_fn = nn.BCELoss()
         self.auc, self.brier, self.ece = [], [], []
+        self.mode = mode
 
     def forward(self, x):
         x = self.resnet50(x)
@@ -139,16 +138,25 @@ class ResNet50Model(L.LightningModule):
         y_hat = self(x)
         loss = self.loss_fn(y_hat, y)
         self.log('val_loss', loss)
-        self.val_loss = loss
-        auc_scores, brier_scores, ece_scores = auc_brier_ece(y, y_hat)
+        if self.mode == 'real':
+            y_true = y.cpu().detach().numpy()[:, 1]
+            y_prob = torch.sigmoid(y_hat).cpu().detach().numpy()[:, 1]
+        elif self.mode == 'fake':
+            y_true = y.cpu().detach().numpy()[:, 0]
+            y_prob = torch.sigmoid(y_hat).cpu().detach().numpy()[:, 0]
+        auc_scores, brier_scores, ece_scores = auc_brier_ece(y_true, y_prob)
         self.auc.extend(auc_scores)
         self.brier.extend(brier_scores)
         self.ece.extend(ece_scores)
 
     def on_validation_epoch_end(self):
-        print(self.val_loss)
-        print(f"auc: {np.mean(self.auc)} / brier: {np.mean(self.brier)} / ece: {np.mean(self.ece)}")
+        mean_auc, mean_brier, mean_ece = np.mean(self.auc), np.mean(self.brier), np.mean(self.ece)
+        current_lr = self.trainer.optimizers[0].param_groups[0]['lr']
+        print(f"Epoch {self.current_epoch + 1} Learning rate: {current_lr:.6f}")
+        print(f"auc: {mean_auc:.5f} / brier: {mean_brier:.5f} / ece: {mean_ece:.5f}\nCombi_Score: {0.5 * (1 - mean_auc) + 0.25 * mean_brier + 0.25 * mean_ece:.5f}")
         self.auc, self.brier, self.ece = [], [], []
 
     def configure_optimizers(self):
-        return torch.optim.AdamW(self.parameters(), lr=1e-3)
+        optimizer = torch.optim.AdamW(self.parameters(), lr=1e-3)
+        scheduler = torch.optim.lr_scheduler.CosineAnnealingWarmRestarts(optimizer, T_0=5, T_mult=1)
+        return [optimizer], [scheduler]

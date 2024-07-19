@@ -40,18 +40,18 @@ def train(mode, kfold_num):
     val_loader = DataLoader(val_dataset, batch_size=CONFIG.BATCH_SIZE, shuffle=False)
     
     model1 = EfficientNet_b7Model(num_classes=CONFIG.N_CLASSES, mode=mode)
-    model2 = EfficientNet_b6Model(num_classes=CONFIG.N_CLASSES, mode=mode)
-    # model2 = ResNet50Model(num_classes=CONFIG.N_CLASSES)
+    # model2 = EfficientNet_b6Model(num_classes=CONFIG.N_CLASSES, mode=mode)
+    model2 = ResNet50Model(num_classes=CONFIG.N_CLASSES)
     
-    trainer1 = L.Trainer(max_epochs=5, accelerator='gpu', limit_train_batches=32)
-    trainer2 = L.Trainer(max_epochs=5, accelerator='gpu', limit_train_batches=32)
+    trainer1 = L.Trainer(max_epochs=5, accelerator='gpu', limit_train_batches=16)
+    trainer2 = L.Trainer(max_epochs=5, accelerator='gpu', limit_train_batches=16)
     
     trainer1.fit(model1, train_loader, val_loader)
-    trainer1.save_checkpoint(filepath=f'lightning_logs/kfold/effi7-K{kfold_num}-argu50-bat32-{mode}.ckpt')
+    trainer1.save_checkpoint(filepath=f'lightning_logs/kfold/effi7-K{kfold_num}-sche-bat16-{mode}.ckpt')
     time.sleep(1)
 
     trainer2.fit(model2, train_loader, val_loader)
-    trainer2.save_checkpoint(filepath=f'lightning_logs/kfold/effi6-K{kfold_num}-argu50-bat32-{mode}.ckpt')
+    trainer2.save_checkpoint(filepath=f'lightning_logs/kfold/res50-K{kfold_num}-sche-bat16-{mode}.ckpt')
     time.sleep(1)
 
 print("seed initialize to", CONFIG.SEED)
@@ -67,4 +67,4 @@ def kfold_train(kfold_num):
         train(mode='fake', kfold_num=i)
         time.sleep(1)
 
-kfold_train(kfold_num=5)
+kfold_train(kfold_num=1)

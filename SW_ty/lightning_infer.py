@@ -43,11 +43,11 @@ def inference(device, mode, kfold_num):
     test_loader = DataLoader(test_dataset, batch_size=CONFIG.BATCH_SIZE*16, shuffle=False)
 
     # load checkpoint
-    checkpoint1 = f'lightning_logs/5kfold/effi7-K{kfold_num}-argu50-bat32-{mode}.ckpt'
+    checkpoint1 = f'lightning_logs/kfold/effi7-K{kfold_num}-sche-bat16-{mode}.ckpt'
     infer_model1 = EfficientNet_b7Model.load_from_checkpoint(checkpoint1, num_classes=CONFIG.N_CLASSES, mode=mode).to(device)
-    checkpoint2 = f'lightning_logs/5kfold/effi6-K{kfold_num}-argu50-bat32-{mode}.ckpt'
-    infer_model2 = EfficientNet_b6Model.load_from_checkpoint(checkpoint2, num_classes=CONFIG.N_CLASSES, mode=mode).to(device)
-    # infer_model2 = ResNet50Model.load_from_checkpoint(checkpoint2, num_classes=CONFIG.N_CLASSES).to(device)
+    checkpoint2 = f'lightning_logs/kfold/res50-K{kfold_num}-sche-bat16-{mode}.ckpt'
+    # infer_model2 = EfficientNet_b6Model.load_from_checkpoint(checkpoint2, num_classes=CONFIG.N_CLASSES, mode=mode).to(device)
+    infer_model2 = ResNet50Model.load_from_checkpoint(checkpoint2, num_classes=CONFIG.N_CLASSES).to(device)
 
     return np.array(model_inference(test_loader, infer_model1, device)), np.array(model_inference(test_loader, infer_model2, device))
 
@@ -70,9 +70,9 @@ def kfold_infer(kfold_num):
 print("seed initialize to", CONFIG.SEED)
 seed_everything(CONFIG.SEED)
 
-real_preds, fake_preds = kfold_infer(kfold_num=5)
+real_preds, fake_preds = kfold_infer(kfold_num=1)
 
-csv_name = 'submitfile/effi7+effi6_K5_bat32_argu50.csv'  # need for modifing
+csv_name = 'submitfile/effi7_res50_sche_K1_bat16.csv'  # need for modifing
 submit = pd.read_csv('submitfile/sample_submission.csv')
 submit.iloc[:, 1] = fake_preds[:, 1]
 submit.iloc[:, 2] = real_preds[:, 1]
