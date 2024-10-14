@@ -1,11 +1,12 @@
 # Directory for gitignore
 *.pth
 *.ckpt
+data
 
-# ignore file in SW_ty
-SW_ty/data
-SW_ty/data/.gitkeep
-SW_ty/lightning_logs
+# ignore file in fakevoice
+!fakevoice/SW_ty/data/.gitkeep
+fakevoice/SW_ty/lightning_logs
 
-SW_kso/data
-!SW_kso/data/.gitkeep
+
+# ignore file in argi_price
+!argi_price/data/.gitkeep
